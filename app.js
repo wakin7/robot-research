@@ -67,7 +67,10 @@ const colors={mint:'#9be8cb',orange:'#e6b47d',red:'#e58b80',blue:'#8bafdf',white
 function fmt(t){return `${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;}
 function localTime(){return time-starts[index];}
 function stopVoice(){voiceGeneration++;robotSpeech.pause();robotSpeech.removeAttribute('src');robotSpeech.load();if('speechSynthesis'in window)speechSynthesis.cancel();clearTimeout(speechTimer);}
+function sceneHasTaskControls(){return [1,2,3,6,7].includes(sid());}
+function sceneHasAnimation(){return [0,1,2,3,6,7,9,10].includes(sid());}
 function play(on){
+  on=Boolean(on)&&sceneHasAnimation();
   if(on&&localTime()>=scenes[index].duration){feedbackVoiceStarted=false;time=starts[index];if(sid()===7)resetTask();}
   playing=on;
   if(sid()===7){if(on){if(!taskRun.started){state.feedback=state.strategy==='none'?'不主动反馈：本轮只执行任务，不播报进度。':state.strategy==='triggered'?'任务已开始；将视线转向机器人，体验触发播报。':'任务已开始。';updateMessage();}deliverReports(taskRun.play());}else taskRun.pause();}
@@ -77,36 +80,29 @@ function play(on){
   }else robotSpeech.pause();
   updatePlayer();
 }
-function seek(t){
-  time=starts[index]+Math.max(0,Math.min(scenes[index].duration,t));
-  if(sid()===7){taskRun.seek(localTime());state.stage=taskRun.stage;state.feedback='已调整本页进度。点击播放继续。';updateTaskUI();updateMessage();}
-  stopVoice();feedbackVoiceStarted=false;updatePlayer();
-}
 function go(n){
   play(false);stopVoice();feedbackVoiceStarted=false;index=Math.max(0,Math.min(scenes.length-1,n));time=starts[index];
-  renderScene();updatePlayer();if(window.innerWidth<=700)window.scrollTo({top:0,behavior:'instant'});
+  renderScene();play(sceneHasAnimation());if(window.innerWidth<=700)window.scrollTo({top:0,behavior:'instant'});
 }
 function updatePlayer(){
   const elapsed=localTime(),duration=scenes[index].duration,finished=elapsed>=duration;
-  $('timeline').max=duration;$('timeline').value=elapsed;$('timeline').style.setProperty('--progress',`${elapsed/duration*100}%`);
-  $('currentTime').textContent=fmt(elapsed);$('totalTime').textContent=fmt(duration);
   $('prevBtn').disabled=index===0;$('nextBtn').disabled=index===scenes.length-1;
-  $('playBtn').textContent=playing?'Ⅱ':finished?'↻':'▶';
-  $('playBtn').setAttribute('aria-label',playing?'暂停本页':finished?'重播本页':'播放本页');
-  $('playState').textContent=playing?'本页播放中':finished?'本页已结束 · 可重播':'本页已暂停';
+  $('animationControls').hidden=!sceneHasTaskControls();
+  $('visualColumn').classList.toggle('has-animation',sceneHasTaskControls());
+  const label=playing?'暂停演示':finished?'重新演示':'继续演示';
+  $('playLabel').textContent=label;$('playBtn').firstElementChild.textContent=playing?'Ⅱ':finished?'↻':'▶';
+  $('playBtn').setAttribute('aria-label',label);
   if(sid()===7)updateTaskUI();
 }
 function resetTask(){
   taskRun.reset(state.strategy);state.stage=0;state.facing=false;
   gazePoint={x:462,y:319};gazeAngle=Math.atan2(gazePoint.y-readerHead.y,gazePoint.x-readerHead.x);
-  state.feedback='选择一种条件开始，或点击播放。';stopVoice();
+  state.feedback='选择一种条件，或播放整理动画。';stopVoice();
 }
 function restartCondition(){
   time=starts[index];resetTask();state.feedback=state.strategy==='none'?'不主动反馈：本轮只执行任务，不播报进度。':state.strategy==='triggered'?'任务已开始；将视线转向机器人，体验触发播报。':'任务已开始。';renderControls();updateMessage();play(true);
 }
 function updateTaskUI(){
-  const button=$('taskPlay');if(button){button.textContent=playing?'Ⅱ 暂停':taskRun.finished?'↻ 重播':'▶ 播放';button.setAttribute('aria-label',playing?'暂停任务':taskRun.finished?'重播任务':'播放任务');}
-  if($('taskStatus'))$('taskStatus').textContent=(taskRun.finished?'已完成':stageNames[state.stage])+' · '+fmt(taskRun.elapsed)+' / '+fmt(taskRun.duration);
   if($('gazeStatus'))$('gazeStatus').textContent=state.facing?'视线：机器人':'视线：已移开';
   if($('reportStatus'))$('reportStatus').textContent='本轮播报 '+taskRun.count+' 次'+(voiceUnavailable?' · 语音未能播放，显示文字':'');
   canvas.setAttribute('aria-label','整理任务：'+stageNames[state.stage]+'。'+(state.facing?'人物正看向机器人。':'人物视线已移开。')+'在画面内移动鼠标或拖动可控制视线。');
@@ -126,12 +122,12 @@ function deliverReports(reports){
 function chip(text,key,value,selected){return `<button class="chip" data-key="${key}" data-value="${value}" aria-pressed="${selected}">${text}</button>`;}
 function renderControls(){
   let html='';
-  if(sid()===0)html='<button class="primary-button" data-action="start">播放本页 <span>▷</span></button><button class="text-button" data-action="explore">直接探索</button>';
+  if(sid()===0)html='<button class="primary-button" data-action="enter">进入研究 <span>→</span></button><button class="text-button" data-action="explore">直接探索</button>';
   if(sid()===2)html=chip('任务理解错误','error','understanding',state.error==='understanding')+chip('目标识别错误','error','recognition',state.error==='recognition');
   if(sid()===3)html='<span class="control-label">任务理解反馈</span><div class="control-row">'+['none','text','speech'].map((v,i)=>chip(['无反馈','文本','语音'][i],'mode',v,state.mode===v)).join('')+'</div><div class="control-row">'+chip('视觉识别反馈 '+(state.vision?'开启':'关闭'),'vision','toggle',state.vision)+(state.mode==='speech'?'<button class="secondary-button" data-action="speak">▷ 试听语音</button>':'')+'</div><p class="control-help">切换条件后重播本页，可随时暂停比较。</p>';
   if(sid()===4)html=chip('任务理解错误','metric','understanding',state.metric==='understanding')+chip('目标识别错误','metric','recognition',state.metric==='recognition');
   if(sid()===6)html=chip('仅确认收到','plan','false',!state.plan)+chip('披露执行计划','plan','true',state.plan);
-  if(sid()===7)html='<div class="control-row">'+['none','stage','suppressed','triggered'].map((v,i)=>chip(['不主动反馈','按阶段反馈','朝向时抑制','转向时触发'][i],'strategy',v,state.strategy===v)).join('')+'</div><div class="control-row task-transport"><button id="taskPlay" class="secondary-button" data-action="task-play">▶ 播放</button><span id="taskStatus" class="task-status"></span></div><p class="control-help">'+strategyDescription()+'</p><div class="task-indicators"><span id="gazeStatus"></span><span id="reportStatus"></span></div>';
+  if(sid()===7)html='<div class="control-row">'+['none','stage','suppressed','triggered'].map((v,i)=>chip(['不主动反馈','按阶段反馈','朝向时抑制','转向时触发'][i],'strategy',v,state.strategy===v)).join('')+'</div><p class="control-help">'+strategyDescription()+'</p><div class="task-indicators"><span id="gazeStatus"></span><span id="reportStatus"></span></div>';
   if(sid()===8)html=Object.entries(homeResponses).map(([key,d])=>chip(d.label,'context',key,state.context===key)).join('');
   if(sid()===17)html=chip('主动反馈 vs. 不主动','homeCompare','none',state.homeCompare==='none')+chip('按阶段 vs. 转向触发','homeCompare','triggered',state.homeCompare==='triggered');
   if(sid()===18)html=homeScenarios.map(d=>chip(d.label,'homeScenario',d.key,state.homeScenario===d.key)).join('');
@@ -146,7 +142,7 @@ function renderControls(){
   $('researchNav').innerHTML=topics.map((d,i)=>'<button data-result="'+d.id+'" aria-current="'+(d.id===sid()?'step':'false')+'"><span>0'+(i+1)+'</span> '+d.label+'</button>').join('');
   renderPreferenceGrid();
 
-  const descriptions={0:'人和机器人之间以信息连接。',1:'人是拼装者与协作者：按任务板拼装、语音请求积木、检查并取消错误操作；机械臂负责从远端取料并送到人的工作区。播放后连续演示请求、抓取、递送与人的拼装。',2:state.error==='understanding'?'红色圆柱请求被理解成蓝色圆柱。':'任务理解为红色圆柱，但目标识别选中蓝色对象。',3:'反馈模式：'+({none:'无反馈',text:'文本',speech:'语音'}[state.mode])+'；视觉反馈'+(state.vision?'开启，标出红色圆柱。':'关闭。'),4:state.metric==='understanding'?'任务理解错误，成功取消事件的响应时间：无反馈6.66秒，文本6.88秒，语音4.41秒。':'目标识别错误，成功取消事件的响应时间：视觉关闭7.27秒，开启6.61秒。',5:'语音条件下干预响应更快，同时总体每完成任务耗时从20.80增至23.15秒。',6:'人是家务委托者：提出目标，随后观看纪录片或校对文字，间歇关注机器人。机器人是执行者，负责家务。'+(state.plan?'示意计划：先收好书本，再整理桌面，最后归置衣物。':'机器人仅确认收到，未展示执行计划。'),7:'当前任务：'+stageNames[state.stage]+'。用户'+(state.facing?'看向机器人。':'正在阅读。'),8:homeResponses[state.context].scene+'：最常见回应为'+homeResponses[state.context].response+'，'+homeResponses[state.context].n+'/32人。',9:'恰当的沟通需要协调内容、时机与用户控制。',10:'自主机器人与人的理解保持连接，支持理解、检查和介入。'};
+  const descriptions={0:'人和机器人之间以信息连接。',1:'人是拼装者与协作者：按任务板拼装、语音请求积木、检查并取消错误操作；机械臂负责从远端取料并送到人的工作区。连续演示请求、抓取、递送与人的拼装。',2:state.error==='understanding'?'红色圆柱请求被理解成蓝色圆柱。':'任务理解为红色圆柱，但目标识别选中蓝色对象。',3:'反馈模式：'+({none:'无反馈',text:'文本',speech:'语音'}[state.mode])+'；视觉反馈'+(state.vision?'开启，标出红色圆柱。':'关闭。'),4:state.metric==='understanding'?'任务理解错误，成功取消事件的响应时间：无反馈6.66秒，文本6.88秒，语音4.41秒。':'目标识别错误，成功取消事件的响应时间：视觉关闭7.27秒，开启6.61秒。',5:'语音条件下干预响应更快，同时总体每完成任务耗时从20.80增至23.15秒。',6:'人是家务委托者：提出目标，随后观看纪录片或校对文字，间歇关注机器人。机器人是执行者，负责家务。'+(state.plan?'示意计划：先收好书本，再整理桌面，最后归置衣物。':'机器人仅确认收到，未展示执行计划。'),7:'当前任务：'+stageNames[state.stage]+'。用户'+(state.facing?'看向机器人。':'正在阅读。'),8:homeResponses[state.context].scene+'：最常见回应为'+homeResponses[state.context].response+'，'+homeResponses[state.context].n+'/32人。',9:'恰当的沟通需要协调内容、时机与用户控制。',10:'自主机器人与人的理解保持连接，支持理解、检查和介入。'};
   canvas.setAttribute('role','img');canvas.tabIndex=sid()===7?0:-1;canvas.classList.toggle('gaze-interactive',sid()===7);if(sid()===7)updateTaskUI();canvas.setAttribute('aria-label',descriptions[sid()] || researchAccessibility());
 }
 function strategyDescription(){return {none:'全过程不主动播报进度。',stage:'每进入一个新的任务阶段，播报当前进度。',suppressed:'阶段变化且未看向机器人时播报；一看向它，立即停止当前语音。',triggered:'每次从移开转为看向机器人，立即播报当前进度；无需等待，可重复触发。'}[state.strategy];}
@@ -205,17 +201,18 @@ $('sceneControls').addEventListener('click',e=>{
    play(false);stopVoice();state[key]=value==='toggle'?!state[key]:value==='true'?true:value==='false'?false:value;
    time=starts[index];feedbackVoiceStarted=false;renderControls();updateMessage();play(true);return;
  }
- switch(b.dataset.action){case 'start':play(true);break;case 'explore':go(3);break;case 'restart':go(0);break;case 'sources':openSources();break;case 'data':openData();break;case 'task-play':play(!playing);break;case 'speak':speakFeedback(b);break;}
+ switch(b.dataset.action){case 'enter':go(1);break;case 'explore':go(3);break;case 'restart':go(0);break;case 'sources':openSources();break;case 'data':openData();break;case 'speak':speakFeedback(b);break;}
 });
 function speakFeedback(){feedbackVoiceStarted=true;speakClip('grab');}
 $('playBtn').onclick=()=>play(!playing);$('prevBtn').onclick=()=>go(index-1);$('nextBtn').onclick=()=>go(index+1);
-$('timeline').addEventListener('input',e=>{const seconds=Number(e.target.value);play(false);seek(seconds);});
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{play(false);go(Number(b.dataset.go));});document.querySelector('.brand').onclick=e=>{e.preventDefault();play(false);go(0);};
 function openSources(){play(false);stopVoice();$('sceneResearchNotes').replaceChildren(...scenes.map((scene,i)=>{const note=document.createElement('p');note.textContent=String(i+1).padStart(2,'0')+' · '+scene.title.replace(/<[^>]*>/g,'')+'：'+scene.note;return note;}));$('sourcesDialog').showModal();}$('sourcesBtn').onclick=openSources;$('closeSources').onclick=()=>$('sourcesDialog').close();$('sourcesDialog').addEventListener('click',e=>{if(e.target===$('sourcesDialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
-document.addEventListener('keydown',e=>{if($('sourcesDialog').open||$('dataDialog').open||/INPUT|BUTTON|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();play(!playing);}if(e.key==='ArrowRight'){e.preventDefault();go(index+1);}if(e.key==='ArrowLeft'){e.preventDefault();go(index-1);}});
+document.addEventListener('keydown',e=>{if($('sourcesDialog').open||$('dataDialog').open||/INPUT|BUTTON|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'&&sceneHasTaskControls()){e.preventDefault();play(!playing);}if(e.key==='ArrowRight'){e.preventDefault();go(index+1);}if(e.key==='ArrowLeft'){e.preventDefault();go(index-1);}});
 $('fullBtn').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{$('fullBtn').title='当前浏览器不支持全屏';}};
 document.addEventListener('fullscreenchange',()=>{$('fullBtn').setAttribute('aria-label',document.fullscreenElement?'退出全屏':'进入全屏');});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){play(false);stopVoice();}});
+function resumeAmbientAnimation(){if(!sceneHasTaskControls()&&sceneHasAnimation()&&!document.hidden&&!$('sourcesDialog').open&&!$('dataDialog').open)play(true);}
+['sourcesDialog','dataDialog'].forEach(id=>$(id).addEventListener('close',resumeAmbientAnimation));
+document.addEventListener('visibilitychange',()=>{if(document.hidden){play(false);stopVoice();}else resumeAmbientAnimation();});
 function tone(freq,start,length,gain,type='sine'){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0,start);g.gain.linearRampToValueAtTime(gain,start+.06);g.gain.exponentialRampToValueAtTime(.0001,start+length);o.connect(g);g.connect(audioGain);o.start(start);o.stop(start+length+.05);}
 let beat=0;function musicStep(){if(!audioCtx||!state.music)return;const now=audioCtx.currentTime,notes=[130.81,164.81,196,246.94,146.83,174.61,220,261.63];tone(notes[beat%8],now,.8,.1);if(beat%4===0)tone(65.4,now,1.7,.18);if(beat%2===0)tone(notes[(beat+2)%8]*2,now,.28,.025,'triangle');beat++;}
 function syncAudio(){clearInterval(audioTimer);if(audioGain)audioGain.gain.setTargetAtTime(state.music?.22:0,audioCtx.currentTime,.1);if(state.music){audioCtx.resume().catch(()=>{});musicStep();audioTimer=setInterval(musicStep,430);}}
@@ -412,9 +409,9 @@ function frame(now){
    if(sid()===7){
      const reports=taskRun.tick(delta);time=starts[index]+taskRun.elapsed;state.stage=taskRun.stage;
      deliverReports(reports);updateGaze();if(taskRun.finished)playing=false;
-   }else{time=Math.min(starts[index]+scenes[index].duration,time+delta);if(localTime()>=scenes[index].duration)playing=false;}
+   }else if(sceneHasTaskControls()){time=Math.min(starts[index]+scenes[index].duration,time+delta);if(localTime()>=scenes[index].duration)playing=false;}else{time+=delta;}
    updatePlayer();
  }
  draw();frameHandle=requestAnimationFrame(frame);
 }
-initResearch();renderScene();updatePlayer();resize();frameHandle=requestAnimationFrame(frame);
+initResearch();renderScene();play(sceneHasAnimation());resize();frameHandle=requestAnimationFrame(frame);

@@ -7,17 +7,17 @@
   <meta name="description" content="一场关于理解、反馈与信任的交互研究叙事。探索机器人如何让人知其所为，又不打断人的生活。">
   <title>知其所为 — 人与机器人的沟通</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="style.css?v=85a4300ee664">
+  <link rel="stylesheet" href="style.css?v=47b2a42206e1">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="#0" aria-label="回到开场"><span class="brand-symbol">⌘</span> 知其所为 <span class="brand-divider"></span><small>HUMAN × ROBOT</small></a>
-      <div class="top-actions"><span class="edition">交互研究叙事 · 02</span><button id="sourcesBtn" class="text-button">研究与依据 <span>↗</span></button></div>
+      <div class="top-actions"><div class="player-options"><button id="soundBtn" class="option-button" aria-pressed="false" title="开关原创合成氛围音乐">♫ <span>音乐关</span></button><button id="fullBtn" class="icon-button" aria-label="进入全屏">⛶</button></div><button id="sourcesBtn" class="text-button">研究与依据 <span>↗</span></button></div>
     </header>
     <main id="main">
       <section class="story" aria-label="研究动画">
-        <div class="story-topline"><span><i class="live-dot"></i> <span id="chapterLabel">序章 / 当机器人开始自主行动</span></span><span class="scene-counter"><b id="sceneNumber">01</b> / <span id="sceneTotal">18</span></span></div>
+        <div class="story-topline"><span><i class="live-dot"></i> <span id="chapterLabel">序章 / 当机器人开始自主行动</span></span></div>
         <div class="stage-layout">
           <div class="copy-panel" id="copyPanel">
             <div class="eyebrow" id="eyebrow"></div>
@@ -27,10 +27,15 @@
             <nav class="research-nav" id="researchNav" aria-label="机械臂研究结果" hidden></nav>
             <div class="controls-slot" id="sceneControls"></div>
           </div>
+          <div class="visual-column" id="visualColumn">
           <div class="visual-panel" id="visualPanel">
             <canvas id="sceneCanvas" aria-label="机器人沟通过程的动态示意图"></canvas>
             <div id="preferenceGrid" class="preference-grid" hidden></div>
             <div id="visualText" class="visual-text" aria-live="polite"></div>
+          </div>
+          <div id="animationControls" class="animation-controls" role="group" aria-label="当前画面的动画控制">
+            <button id="playBtn" class="animation-play" aria-label="暂停演示" aria-controls="sceneCanvas"><span aria-hidden="true">Ⅱ</span><span id="playLabel">暂停演示</span></button>
+          </div>
           </div>
         </div>
       </section>
@@ -42,10 +47,12 @@
         <button data-go="14"><span>04</span> 恰当的沟通</button>
       </nav>
     </main>
-    <footer class="player">
-      <div class="transport"><button id="playBtn" class="play-button" aria-label="播放本页">▶</button><button id="prevBtn" class="icon-button" aria-label="上一幕">←</button><button id="nextBtn" class="icon-button" aria-label="下一幕">→</button></div>
-      <div class="scrubber"><div class="scrub-label"><span id="playState">本页已暂停</span><span class="time"><span id="currentTime">00:00</span> <span class="muted">/ <span id="totalTime">00:14</span></span></span></div><input id="timeline" type="range" min="0" max="14" step="0.1" value="0" aria-label="本页播放进度"></div>
-      <div class="player-options"><button id="soundBtn" class="option-button" aria-pressed="false" title="开关原创合成氛围音乐">♫ <span>音乐关</span></button><button id="fullBtn" class="icon-button" aria-label="进入全屏">⛶</button></div>
+    <footer class="page-footer">
+      <nav class="page-navigation" aria-label="页面导航">
+        <button id="prevBtn" class="page-button" aria-label="上一页"><span aria-hidden="true">←</span> 上一页</button>
+        <span class="scene-counter"><b id="sceneNumber">01</b> / <span id="sceneTotal">18</span></span>
+        <button id="nextBtn" class="page-button" aria-label="下一页">下一页 <span aria-hidden="true">→</span></button>
+      </nav>
     </footer>
   </div>
   <dialog id="sourcesDialog" aria-labelledby="sourceTitle"><div class="dialog-header"><span class="eyebrow">RESEARCH NOTES</span><button id="closeSources" class="icon-button" aria-label="关闭研究说明">×</button></div><h2 id="sourceTitle">故事背后的研究</h2><p class="dialog-intro">网页依据两份提供的研究稿件整理。动画用于解释实验条件与设计思路，不是原始实验录像，也不产生新的实验结论。</p>
@@ -62,6 +69,6 @@
   <script src="research-visuals.js?v=5f7a44b22d06"></script>
   <script src="feedback-model.js?v=0fa582b8670c"></script>
   <script src="speech-audio.js?v=c5e74889e328"></script>
-  <script src="app.js?v=5b40d14c5b4b"></script>
+  <script src="app.js?v=a7c10bfa55c8"></script>
 </body>
 </html>
